@@ -1,6 +1,15 @@
 # DoesItDie
 
-## v0.9.2
+## v0.9.3
+
+**Restart the game fully after updating** (not just /reload): this version adds a new file.
+
+- **Russian client:** your DoTs are read on Russian (ruRU) clients, and the options window, `/did help` and chat messages are in Russian (Advanced > Window language, or Auto on a Russian client). Thanks to donesvad for the translation. If a DoT isn't picked up, a `/did debug` log helps.
+- **Targeting the next mob over a corpse:** with action targeting, a DoT no longer lands on the corpse of your last kill when the next mob is your soft target.
+- **Steadier estimates:** a DoT that hasn't ticked yet keeps the size it was cast with, so ticks on another mob don't shift its marker.
+- **Learning from the damage meter is more careful:** it no longer learns wrong sizes when a cast had no known target, a DoT was out of sight, or two pulls ran together, and it splits off upfront hits (Rake, Flame Shock) correctly.
+- **Pick (Advanced tab)** finds health bars that unit frame addons moved into unnamed holders (EllesmereUI).
+- Thanks to Ironship for the last four.
 
 - **Rend and other bleeds:** the marker no longer runs out before the last tick. Melee hits landing just before a tick were taken for it and pulled the DoT's timing earlier. Thanks to Nomad1506 for the report.
 - **Mouseover casts:** DoTs cast with a `/cast [@mouseover]` macro now go on the mob under your mouse, not only on your target. Thanks to user_yvdmerb29jzj4lxi for the report.
