@@ -267,7 +267,7 @@ check("defaults applied", G.DoesItDieDB.skullIcon, "cross")
 ns.locale.register(lua.eval('{ tag = "xxXX", label = "Test", strings = { ["Live preview"] = "Vorschau (test)" } }'))
 G.DoesItDieDB.uiLanguage = "xxXX"
 check("a language with translations is offered", [e.id for e in ns.locale.windowLanguages().values()],
-      ["auto", "enUS", "deDE", "xxXX"])
+      ["auto", "enUS", "deDE", "ruRU", "xxXX"])
 step("run the display loop with no target", lambda: H.update(0.2))
 step("/did opens the window", lambda: G.SlashCmdList.DOESITDIE(""))
 check("window shown", G.DoesItDieOptions.shown, True)
