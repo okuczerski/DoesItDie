@@ -62,6 +62,7 @@ local FOCUS_KEYS = {
     plateFillColor = "focusFillColor", plateFillOpacity = "focusFillOpacity", plateOutlineStyle = "focusOutlineStyle",
     plateDashLength = "focusDashLength", plateOutlineThickness = "focusOutlineThickness",
     plateOutlineColor = "focusOutlineColor", plateOutlineOpacity = "focusOutlineOpacity",
+    plateFillDirection = "focusFillDirection",
 }
 local focusLook = setmetatable({}, { __index = function(_, key) return ns.db[FOCUS_KEYS[key] or key] end })
 ns.focusKeys = FOCUS_KEYS -- (Options.lua's "Copy from Nameplates tab")
@@ -86,6 +87,7 @@ end
 local function refreshPreview(db)
     if not previewHost or not previewState then return end
     ns.barMarker.pin(previewHost.frame)
+    previewHost.healthBar:SetReverseFill(ns.db.focusFillDirection == "rightToLeft")
     previewWidgets = ns.barMarker.widgetsFor(previewHost.frame, previewHost.healthBar)
     local entries, total = {}, 0
     for _, dot in ipairs(previewState.dots) do

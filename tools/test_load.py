@@ -93,6 +93,8 @@ function methods.SetValue(self, v)
     if self.scripts.OnValueChanged then self.scripts.OnValueChanged(self, v, false) end
 end
 function methods.GetValue(self) return self.value or 0 end
+function methods.SetReverseFill(self, v) self.reverseFill = v end
+function methods.GetReverseFill(self) return self.reverseFill == true end
 function methods.RegisterEvent(self, e) self.events = self.events or {}; self.events[e] = true end
 function methods.RegisterUnitEvent(self, e) self.events = self.events or {}; self.events[e] = true end
 function methods.GetDebugName(self) return self.name or "mock" end
@@ -360,6 +362,17 @@ check("  copied the nameplates' icon size", G.DoesItDieDB.focusIconSize, 18)
 check("  and their fill", G.DoesItDieDB.focusFillTexture, G.DoesItDieDB.plateFillTexture)
 check("  but not their show mode", G.DoesItDieDB.focusMode, "markerIcon")
 check("  preview follows", preview_focus_icon_window().width if preview_focus_icon_window() else None, 18)
+
+# CurseForge request (2026-11-07): nameplate addons whose health drains to the right.
+G.DoesItDieDB.plateFillDirection = "rightToLeft"
+step("nameplate marker fills from the right", lambda: H.update(0.2))
+plate_marker = preview_plate_markers()[0]
+check("  mock plate drains to the right", G.DoesItDieOptions.plateHealthBar.reverseFill, True)
+check("  plate marker fills from the right", plate_marker.reverseFill, True)
+check("  focus marker unchanged", preview_focus_markers[0].reverseFill, False)
+G.DoesItDieDB.plateFillDirection = "auto"
+step("back to auto (the mock plate drains left again)", lambda: H.update(0.2))
+check("  plate marker follows the bar: from the left", plate_marker.reverseFill, False)
 
 
 def pick_outline_none():

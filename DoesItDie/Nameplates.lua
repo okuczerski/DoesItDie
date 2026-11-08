@@ -31,6 +31,11 @@ ns.lists.nameplateIconPositions = {
     { id = "left",  label = "Left of the health bar" },
     { id = "above", label = "Above the health bar" },
 }
+ns.lists.plateFillDirections = {
+    { id = "auto",        label = "Same as the health bar" },
+    { id = "leftToRight", label = "From the left" },
+    { id = "rightToLeft", label = "From the right" },
+}
 
 local testBars = {}
 local hideTestBarsAt = 0
@@ -316,6 +321,38 @@ local function coverSpan(texture, span)
     texture:SetPoint("BOTTOMRIGHT", span, "BOTTOMRIGHT")
 end
 
+-- Which end the marker and its segments fill from. Left to right covers the last damage-worth of a bar that drains
+-- to the left (Blizzard's); reversed, the right end of one that drains to the right.
+local function setFillDirection(w, reversed)
+    if w.reversed == reversed then return end
+    w.reversed = reversed
+    local near, far = reversed and "RIGHT" or "LEFT", reversed and "LEFT" or "RIGHT"
+    w.marker:SetReverseFill(reversed)
+    for i, segment in ipairs(w.segments) do
+        segment.bar:SetReverseFill(reversed)
+        local texture = segment.texture
+        texture:ClearAllPoints()
+        if i == 1 then
+            texture:SetPoint("TOP" .. near, w.marker, "TOP" .. near)
+        else
+            texture:SetPoint("TOP" .. near, w.segments[i - 1].fillEnd, "TOP" .. far)
+        end
+        texture:SetPoint("BOTTOM" .. far, segment.fillEnd, "BOTTOM" .. far)
+    end
+end
+
+-- The direction setting (plateFillDirection, focusFillDirection through the focus view), with auto following the
+-- health bar's own reverse fill when it can be read.
+local function wantsReversed(w, db)
+    local direction = db.plateFillDirection
+    if direction == "rightToLeft" then return true end
+    if direction == "leftToRight" then return false end
+    local bar = w.healthBar
+    if not (bar and bar.GetReverseFill) then return false end
+    local ok, reversed = pcall(bar.GetReverseFill, bar)
+    return ok and not isSecret(reversed) and reversed == true
+end
+
 local function invisibleBar(parent)
     local bar = CreateFrame("StatusBar", nil, parent)
     bar:SetStatusBarTexture(WHITE)
@@ -360,19 +397,14 @@ local function createWidgets(host, healthBar, pooledHost, matchStrata)
     w.fill = w.marker:CreateTexture(nil, "ARTWORK")
     coverSpan(w.fill, w.span)
 
-    -- Per-DoT segments: running-total bars, each segment between the previous bar's fill end and its own.
+    -- Per-DoT segments: running-total bars, each segment between the previous bar's fill end and its own
+    -- (anchored in setFillDirection).
     w.segments = {}
     for i = 1, MAX_SEGMENTS do
         local bar = invisibleBar(w.marker)
         bar:SetAllPoints(w.marker)
         local fillEnd = bar:GetStatusBarTexture()
         local texture = w.marker:CreateTexture(nil, "ARTWORK", nil, 1)
-        if i == 1 then
-            texture:SetPoint("TOPLEFT", w.marker, "TOPLEFT")
-        else
-            texture:SetPoint("TOPLEFT", w.segments[i - 1].fillEnd, "TOPRIGHT")
-        end
-        texture:SetPoint("BOTTOMRIGHT", fillEnd, "BOTTOMRIGHT")
         w.segments[i] = { bar = bar, fillEnd = fillEnd, texture = texture }
     end
 
@@ -398,6 +430,7 @@ local function createWidgets(host, healthBar, pooledHost, matchStrata)
     -- The plate is pooled: a recycled one must not show the last mob's marker before our next update.
     if pooledHost then host:HookScript("OnHide", function() hideWidgets(w) end) end
 
+    setFillDirection(w, false)
     attachWidgets(w, healthBar, matchStrata)
     widgetsByHost[host] = w
     return w
@@ -476,6 +509,7 @@ end
 -- they only ever go into StatusBar min/max, never into Lua math. Returns false if drawing failed.
 local function drawPlate(w, entries, total, maxHealth, health, db)
     applyStyle(w, db)
+    setFillDirection(w, wantsReversed(w, db))
     local perDot = db.plateDotColors ~= "single"
     local count = perDot and math.min(#entries, MAX_SEGMENTS) or 0
     local ok = pcall(function()
@@ -562,6 +596,8 @@ local function updatePreviewPlate(db)
             total = total + dot.damage
         end
     end
+    -- The mock plate drains the way the setting says, so the preview shows the marker on the matching end.
+    previewPlate.healthBar:SetReverseFill(db.plateFillDirection == "rightToLeft")
     local w = widgetsFor(previewPlate.plate, previewPlate.healthBar)
     if total <= 0 or db.nameplateMode == "off" then return hideWidgets(w) end
     drawPlate(w, entries, total, 100, math.max(previewState.health, 0.01), db)

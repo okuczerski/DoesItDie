@@ -138,6 +138,7 @@ local DEFAULTS = {
     focusIcon = "skull",
     focusIconSize = 18,
     focusIconPosition = "left", -- the portrait is on the right of Blizzard's focus frame
+    focusFillDirection = "auto",
     focusIconOffsetX = 0,
     focusIconOffsetY = 0,
     focusDotColors = "school",
@@ -157,6 +158,9 @@ local DEFAULTS = {
     nameplateMode = "markerIcon",
     nameplateIconSize = 18,
     nameplateIconPosition = "left", -- the level badge sits right of the bar on Forever's plates
+    -- Which end the marker fills from: auto follows the health bar's own reverse fill (nameplate addons whose
+    -- health drains to the right; CurseForge request, 2026-11-07).
+    plateFillDirection = "auto",
     plateIconOffsetX = 0,
     plateIconOffsetY = 15,          -- clear of the level number, which draws over the icon
     plateIcon = "skull",
@@ -518,6 +522,9 @@ local function sentTargetKey(targetName)
     if nameOf("focus") == targetName then return unitKey("focus") or false end
     -- A mouseover/soft-target cast names the soft enemy even while an attackable hard target is selected.
     if nameOf("softenemy") == targetName then return unitKey("softenemy") or false end
+    -- A /cast [@mouseover] macro names the mob under the mouse, which is the soft enemy only with soft targeting
+    -- on (CurseForge comment, 2026-11-07: markers only showed when the mob was selected).
+    if nameOf("mouseover") == targetName then return unitKey("mouseover") or false end
     return targetKey
 end
 
@@ -1013,8 +1020,19 @@ end
 -- Forever hides UNIT_COMBAT damage amounts in combat (secret; issue #26), while the action and school stay
 -- readable. Without a size, a hit is matched on school and timing alone: one in a DoT's school, on its rhythm,
 -- in a slot not yet taken, is its tick. That keeps the DoT (a resisted one still gets no ticks and is dropped)
--- and anchors its rhythm, but teaches no size: the estimate keeps the learned or description tick. Physical
--- bleeds can take a white hit landing in the window for a tick; that only keeps the DoT on its schedule.
+-- and anchors its rhythm, but teaches no size: the estimate keeps the learned or description tick.
+-- Physical bleeds can take a white hit landing in the window for a tick, so their hidden hits never move the
+-- rhythm: they stay on the schedule from the cast (first ticks land within ~0.1s of it). Anchoring on white hits
+-- let Rend's schedule drift a little earlier with each one, until the marker ran out a tick before Rend did
+-- (CurseForge comment, 2026-11-07).
+local function countHiddenTickOnSchedule(dot, index)
+    dot.missed = 0
+    dot.hiddenSlot = index
+    local nextTickAt = dot.appliedAt + (index + 1) * dot.interval
+    if nextTickAt > dot.nextTickAt then dot.nextTickAt = nextTickAt end
+    return index
+end
+
 local function onHiddenAmountHit(key, unit, school)
     local dots = dotsByTarget[key]
     if not dots then return end
@@ -1026,7 +1044,12 @@ local function onHiddenAmountHit(key, unit, school)
         if not hit.fed[name] and dot.school == school then
             local distance, index = distanceToExpectedTick(dot, now)
             local window = dot.firstTickAt and TICK_MATCH_WINDOW_ANCHORED or TICK_MATCH_WINDOW
-            local freshSlot = not dot.firstTickAt or index > dot.lastTickIndex
+            local freshSlot
+            if dot.firstTickAt then
+                freshSlot = index > dot.lastTickIndex
+            else
+                freshSlot = index > (dot.hiddenSlot or 0)
+            end
             if freshSlot and distance <= window and (not bestDistance or distance < bestDistance) then
                 best, bestName, bestDistance, bestIndex = dot, name, distance, index
             end
@@ -1040,7 +1063,12 @@ local function onHiddenAmountHit(key, unit, school)
     best.ticksSeen = best.ticksSeen + 1
     best.lastTickAmount, best.lastTickShape, best.lastTickCrit = 0, tickShape(best, tickNumberAt(best, now)), false
     best.offBeatCandidate = nil
-    local tickIndex = anchorTick(best, bestIndex, now)
+    local tickIndex
+    if school == 1 and not best.firstTickAt then
+        tickIndex = countHiddenTickOnSchedule(best, bestIndex)
+    else
+        tickIndex = anchorTick(best, bestIndex, now)
+    end
     hit.fed[bestName] = true
     tallyHiddenTick(best, best.lastTickShape)
     trace(string.format("TICK %s (amount hidden) on %s (tick %d/%d, expecting %.1f for this tick)%s", bestName,

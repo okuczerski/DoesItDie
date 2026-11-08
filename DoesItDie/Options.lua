@@ -903,6 +903,9 @@ local function buildTabs()
     plates:slider("plateIconOffsetY", "Icon vertical offset", -40, 40, 1,
         { enabledIf = plateIcon, tooltip = "Pixels up (+) or down (-) from the chosen position." })
     plates:gap()
+    plates:choice("plateFillDirection", "Marker fills", lists.plateFillDirections, { enabledIf = platesOn,
+        tooltip = "Which end of the health bar the marker covers. Choose From the right if your nameplate addon's "
+            .. "health drains to the right." })
     plates:choice("plateDotColors", "DoT colors", lists.dotColors, { enabledIf = platesOn })
     plates:choice("plateFillTexture", "Fill style", lists.fills, { enabledIf = platesOn })
     plates:choice("plateFillColor", "Fill color", lists.colors, { enabledIf = plateSingle })
@@ -942,6 +945,9 @@ local function buildTabs()
     focus:slider("focusIconOffsetY", "Icon vertical offset", -40, 40, 1,
         { enabledIf = focusIcon, tooltip = "Pixels up (+) or down (-) from the chosen position." })
     focus:gap()
+    focus:choice("focusFillDirection", "Marker fills", lists.plateFillDirections, { enabledIf = focusOn,
+        tooltip = "Which end of the health bar the marker covers. Choose From the right if your focus frame's "
+            .. "health drains to the right." })
     focus:choice("focusDotColors", "DoT colors", lists.dotColors, { enabledIf = focusOn })
     focus:choice("focusFillTexture", "Fill style", lists.fills, { enabledIf = focusOn })
     focus:choice("focusFillColor", "Fill color", lists.colors, { enabledIf = focusSingle })
@@ -955,7 +961,8 @@ local function buildTabs()
     focus.footer = pushButton(window.settingsArea, "Copy from Nameplates tab", 180, function()
         local db = ns.db
         for plateKey, focusKey in pairs(ns.focusKeys) do
-            if plateKey ~= "nameplateMode" then db[focusKey] = db[plateKey] end
+            -- The direction belongs to each frame's own health bar, not the look.
+            if plateKey ~= "nameplateMode" and plateKey ~= "plateFillDirection" then db[focusKey] = db[plateKey] end
         end
         changed()
     end)

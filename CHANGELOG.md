@@ -1,5 +1,11 @@
 # DoesItDie
 
+## v0.9.2
+
+- **Rend and other bleeds:** the marker no longer runs out before the last tick. Melee hits landing just before a tick were taken for it and pulled the DoT's timing earlier. Thanks to Nomad1506 for the report.
+- **Mouseover casts:** DoTs cast with a `/cast [@mouseover]` macro now go on the mob under your mouse, not only on your target. Thanks to user_yvdmerb29jzj4lxi for the report.
+- **Nameplates and focus frame: health bars that drain to the right.** A new "Marker fills" setting (Nameplates and Focus tabs) puts the marker on the right end of the bar. By default it follows the health bar's own direction. Thanks to huldan_megroyn for the idea.
+
 ## v0.9.1
 
 - **DoTs no longer vanish a few seconds after casting.** Forever now hides the damage numbers of hits during combat, so no tick was ever recognized and every DoT was dropped as resisted. Ticks are now recognized by their timing and school, and the marker counts down for the DoT's whole duration. Thanks to quintanilha6 for the fix and jasondotsetHacked for finding the cause (issue #26).

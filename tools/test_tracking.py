@@ -619,6 +619,15 @@ check("Enemy target A, DoT cast at soft enemy B (mouseover): on B", (sim.markerO
 sim.reset(); sim.target("A"); sim.canAttack("target", True); sim.plate("softenemy", "B")
 sim.succeed(1, sim.send(1, None, "A"))
 check("  cast at A itself: on A", (sim.markerOn("A"), sim.markerOn("B")), ("40 dmg", "0 dmg"))
+# CurseForge comment (2026-11-07): /cast [@mouseover] without soft targeting. The mob under the mouse is only the
+# "mouseover" unit, not the soft enemy.
+sim.reset(); sim.target("A"); sim.canAttack("target", True); sim.plate("mouseover", "B")
+sim.succeed(1, sim.send(1, None, "B"))
+check("[@mouseover] Corruption on B, target A, no soft target: on B", (sim.markerOn("B"), sim.markerOn("A")),
+      ("40 dmg", "0 dmg"))
+sim.reset(); sim.target(None); sim.plate("mouseover", "B")
+sim.succeed(1, sim.send(1, None, "B"))
+check("  same with no target at all: on B", sim.markerOn("B"), "40 dmg")
 
 # Issue #26: Forever hides UNIT_COMBAT amounts in combat, while action and school stay readable. Hits are then
 # matched to DoTs on school and timing alone, and teach no tick size.
@@ -660,6 +669,25 @@ sim.reset(); sim.learn(16, 12); sim.cast(16); sim.advance(3); sim.hit(12, 32); s
 check("Readable tick then a hidden one: learned size kept, both count", (sim.learned(16), ticks("Shadow Word")),
       (12, 2))
 check("  estimate uses the learned size", sim.marker(), "24 dmg from 1 DoT(s)")
+
+# CurseForge comment (2026-11-07): Rend's marker ran out a tick before Rend. With hidden amounts, white hits just
+# ahead of each tick were taken for it and re-anchored the bleed earlier and earlier; the real ticks then fell
+# outside the window. A bleed's hidden hits now count on the cast's schedule without moving it.
+sim.reset(); sim.learn(2, 13); sim.cast(2)
+sim.advance(2.6); sim.hiddenHit(1); sim.advance(0.4); sim.hiddenHit(1)   # white at 2.6, tick 1 at 3.0
+sim.advance(2.4); sim.hiddenHit(1); sim.advance(0.6); sim.hiddenHit(1)   # white at 5.4, tick 2 at 6.0
+sim.advance(2.2); sim.hiddenHit(1)                                      # white at 8.2
+sim.advance(0.3)
+check("Hidden: white hits just before Rake's ticks: last tick still shown at 8.5s", sim.marker(),
+      "13 dmg from 1 DoT(s)")
+sim.advance(0.4)
+check("  and at 8.9s, just before it lands (it used to be gone by now)", sim.marker(), "13 dmg from 1 DoT(s)")
+sim.advance(0.1); sim.hiddenHit(1)                                      # tick 3 at 9.0
+check("  three ticks counted, one per slot", ticks("Rake"), 3)
+sim.advance(0.5)
+check("  gone after the last tick", sim.marker(), "0 dmg from 0 DoT(s)")
+sim.reset(); sim.learn(2, 13); sim.cast(2); sim.advance(3); sim.hiddenHit(1); sim.advance(0.2); sim.hiddenHit(1)
+check("Hidden: a white hit right after Rake's tick: not a second tick", ticks("Rake"), 1)
 
 
 # Local addition: real tick sizes from the damage meter after combat, while hit amounts are hidden in combat.
